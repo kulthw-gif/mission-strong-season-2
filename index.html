@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บันทึกกิจกรรมและหลักฐาน</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; line-height: 1.6; background-color: #f4f4f9; }
+        .container { max-width: 400px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; }
+        button { background-color: #00b900; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:disabled { background-color: #ccc; }
+        label { font-weight: bold; display: block; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h3>บันทึกข้อมูลกิจกรรม</h3>
+        <p id="userName" style="color: #666;">กำลังโหลดข้อมูลผู้ใช้...</p>
+        
+        <form id="recordForm">
+            <label>กิจกรรม (Activity):</label>
+            <input type="text" id="activity" placeholder="เช่น เดินวิ่ง, เยี่ยมบ้าน" required>
+            
+            <label>ค่าที่วัดได้ (Value):</label>
+            <input type="number" id="value" placeholder="ระบุตัวเลข" required>
+            
+            <label>หน่วย (Unit):</label>
+            <input type="text" id="unit" placeholder="เช่น ครั้ง, กม., ระดับ" required>
+            
+            <label>คะแนน (Points):</label>
+            <input type="number" id="points" placeholder="ระบุคะแนน (ถ้ามี)">
+            
+            <label>อัปโหลดรูปหลักฐาน (Image):</label>
+            <input type="file" id="imageFile" accept="image/*" required>
+            
+            <button type="submit" id="submitBtn">ส่งข้อมูลลงระบบ</button>
+        </form>
+    </div>
+
+    <script>
+        // --- ส่วนที่คุณต้องแก้ไขภายหลัง ---
+        const scriptUrl = 'ใส่_WEB_APP_URL_จาก_GOOGLE_APPS_SCRIPT';
+        const liffId = 'ใส่_LIFF_ID_จาก_LINE_DEVELOPER';
+        // -----------------------------
+
+        let lineUserId = "";
+        let lineUserName = "";
+
+        async function main() {
+            await liff.init({ liffId: liffId });
+            if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                lineUserId = profile.userId;
+                lineUserName = profile.displayName;
+                document.getElementById('userName').innerText = "ผู้ส่ง: " + lineUserName;
+            } else {
+                liff.login();
+            }
+        }
+        main();
+
+        document.getElementById('recordForm').addEventListener('submit', e => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerText = "กำลังส่งข้อมูล...";
+            submitBtn.disabled = true;
+
+            const file = document.getElementById('imageFile').files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function() {
+                const payload = {
+                    userId: lineUserId,
+                    name: lineUserName,
+                    activity: document.getElementById('activity').value,
+                    value: document.getElementById('value').value,
+                    unit: document.getElementById('unit').value,
+                    points: document.getElementById('points').value,
+                    imageContent: reader.result
+                };
+
+                fetch(scriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                })
+                .then(() => {
+                    alert('บันทึกข้อมูลและอัปโหลดรูปภาพสำเร็จ!');
+                    liff.closeWindow();
+                })
+                .catch(err => {
+                    alert('เกิดข้อผิดพลาด: ' + err);
+                    submitBtn.disabled = false;
+                });
+            };
+            reader.readAsAsDataURL(file);
+        });
+    </script>
+</body>
+</html>
